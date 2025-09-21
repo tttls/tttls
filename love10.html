@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>恋爱·同同♥静静</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        love: {
+                            pink: '#ff99cc',
+                            deepPink: '#ff1493',
+                            lightPink: '#ffb6c1',
+                            purple: '#9370db',
+                            bg: '#0f0010',
+                            progress: '#ff69b4',
+                            button: '#501a23'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['SimHei', 'WenQuanYi Micro Hei', 'Heiti TC', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .heart-beat {
+                animation: heartbeat 1.5s ease-in-out infinite;
+            }
+            @keyframes heartbeat {
+                0% { transform: scale(1); }
+                14% { transform: scale(1.1); }
+                28% { transform: scale(1); }
+                42% { transform: scale(1.1); }
+                70% { transform: scale(1); }
+            }
+        }
+
+        #loveCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        #musicController {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        /* 音乐播放器容器样式 */
+        #musicPlayerContainer {
+            transition: all 0.3s ease;
+        }
+
+        #musicPlayerContainer:hover {
+            transform: translateY(-5px);
+        }
+
+        /* 隐藏原生音频控件 */
+        #backgroundMusic {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-love-bg overflow-hidden m-0 p-0 h-screen">
+    <div id="loader" class="fixed inset-0 flex items-center justify-center bg-love-bg z-200">
+        <div class="text-love-pink text-center">
+            <i class="fa fa-heart heart-beat text-5xl mb-4"></i>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <canvas id="loveCanvas"></canvas>
+
+    <!-- 网易云音乐iframe播放器 (居中显示在底部上方) -->
+    <div id="musicPlayerContainer" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-90 bg-love-button bg-opacity-80 p-2 rounded-lg shadow-lg">
+        <!-- 网易云音乐外链播放器 (可替换为自己的歌曲) -->
+        <!-- 如何获取: 网易云音乐网页版 → 歌曲页 → 分享 → 生成外链播放器 → 复制iframe代码 -->
+        <iframe
+            frameborder="no"
+            border="0"
+            marginwidth="0"
+            marginheight="0"
+            width="330"
+            height="450"
+            src="//music.163.com/outchain/player?type=0&id=14319654515&auto=1&height=430"
+            title="网易云音乐播放器"
+        >
+        </iframe>
+    </div>
+
+    <!-- 音乐控制器 (保留快捷操作按钮) -->
+    <div id="musicController" class="bg-opacity-50 bg-love-button text-white p-3 flex items-center justify-between">
+        <button id="togglePlayerBtn" class="w-10 h-10 rounded-full bg-love-deepPink flex items-center justify-center">
+            <i class="fa fa-music"></i>
+        </button>
+
+        <div class="flex-grow mx-3 text-center text-sm">
+            <span>点击左侧←音乐播放器可关闭歌单</span>
+        </div>
+
+        <div class="flex items-center">
+            <button id="fireworkBtn" class="ml-2 px-3 py-1 bg-love-pink rounded text-xs">
+                烟花
+            </button>
+            <!-- 本地音乐上传功能 -->
+            <label for="localMusic" class="ml-2 px-3 py-1 bg-love-purple rounded text-xs cursor-pointer">
+                本地音乐
+            </label>
+            <input id="localMusic" type="file" accept="audio/mp3" class="hidden">
+        </div>
+    </div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // 基本错误处理
+        window.addEventListener('error', (e) => {
+            console.error('发生错误:', e.error);
+            alert('页面加载出错: ' + e.error.message);
+        });
+
+        // 获取画布和上下文
+        const canvas = document.getElementById('loveCanvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('无法获取Canvas上下文');
+            alert('您的浏览器不支持Canvas，无法运行此应用');
+        }
+
+        // 元素获取
+        const audio = document.getElementById('backgroundMusic');
+        const loader = document.getElementById('loader');
+        const fireworkBtn = document.getElementById('fireworkBtn');
+        const togglePlayerBtn = document.getElementById('togglePlayerBtn');
+        const musicPlayerContainer = document.getElementById('musicPlayerContainer');
+        const localMusicInput = document.getElementById('localMusic');
+
+        // 响应式画布尺寸
+        function resizeCanvas() {
+            try {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                bigHeartPoints = getHeartPoints(BIG_HEART_SCALE);
+                borderHearts = createBorderHearts();
+                initWordBlocks();
+                console.log(`画布已调整大小: ${canvas.width}x${canvas.height}`);
+            } catch (e) {
+                console.error('调整画布大小时出错:', e);
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 颜色定义
+        const COLORS = {
+            white: '#ffffff',
+            red: '#ff0000',
+            pink: '#ff99cc',
+            deepPink: '#ff1493',
+            lightPink: '#ffb6c1',
+            purple: '#9370db'
+        };
+
+        // 烟花颜色
+        const FIREWORK_COLORS = [
+            [255, 50, 50], [255, 150, 50], [255, 255, 50],
+            [50, 255, 50], [50, 150, 255], [150, 50, 255],
+            [255, 50, 150], [255, 255, 255]
+        ];
+
+        // 大桃心参数
+        const BIG_HEART_SCALE = Math.min(window.innerWidth, window.innerHeight) / 30;
+        let bigHeartPoints = getHeartPoints(BIG_HEART_SCALE);
+
+        // 计算心形点
+        function getHeartPoints(scale = 1, xOffset = 0, yOffset = 0) {
+            try {
+                const points = [];
+                for (let angle = 0; angle < 360; angle += 2) {
+                    const t = angle * Math.PI / 180;
+                    const x = 16 * Math.sin(t) ** 3;
+                    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+
+                    points.push({
+                        x: x * scale + canvas.width / 2 + xOffset,
+                        y: -y * scale + canvas.height / 2 + yOffset
+                    });
+                }
+                return points;
+            } catch (e) {
+                console.error('计算心形点时出错:', e);
+                return [];
+            }
+        }
+
+        // 检查点是否在桃心内部
+        function isInsideHeart(x, y, heartPoints) {
+            let inside = false;
+            for (let i = 0, j = heartPoints.length - 1; i < heartPoints.length; j = i++) {
+                const xi = heartPoints[i].x, yi = heartPoints[i].y;
+                const xj = heartPoints[j].x, yj = heartPoints[j].y;
+
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi + 0.0001) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        // 边框小桃心类
+        class BorderHeart {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 15 + 5;
+                this.color = this.getRandomColor();
+                this.pulse = Math.random() * Math.PI * 2;
+                this.pulseSpeed = Math.random() * 0.03 + 0.02;
+                this.rotation = 0;
+                this.rotationSpeed = Math.random() * 1 - 0.5;
+            }
+
+            getRandomColor() {
+                const colors = [
+                    COLORS.red, COLORS.pink, COLORS.deepPink,
+                    COLORS.purple, '#ff3232', '#ff96c8'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.pulse += this.pulseSpeed;
+                this.currentSize = this.size + Math.sin(this.pulse) * 2;
+                this.rotation += this.rotationSpeed;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation * Math.PI / 180);
+
+                ctx.beginPath();
+                const points = [];
+                for (let angle = 0; angle < 360; angle += 5) {
+                    const t = angle * Math.PI / 180;
+                    const x = 16 * Math.sin(t) ** 3;
+                    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                    points.push({
+                        x: x * this.currentSize / 16,
+                        y: -y * this.currentSize / 16
+                    });
+                }
+
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = COLORS.white;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // 创建边框桃心
+        function createBorderHearts() {
+            return bigHeartPoints.map(point => new BorderHeart(point.x, point.y));
+        }
+
+        let borderHearts = createBorderHearts();
+
+        // 内部桃心粒子类
+        class InnerHeart {
+            constructor() {
+                const angle = Math.random() * Math.PI * 2;
+                const t = angle;
+                let x = 16 * Math.sin(t) ** 3;
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+
+                this.x = x * (BIG_HEART_SCALE * 0.8) / 16 + canvas.width / 2;
+                this.y = -y * (BIG_HEART_SCALE * 0.8) / 16 + canvas.height / 2;
+
+                this.size = Math.random() * 7 + 5;
+                this.color = this.getRandomColor();
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.life = Math.random() * 120 + 60;
+                this.alpha = 1;
+            }
+
+            getRandomColor() {
+                const colors = [
+                    COLORS.red, COLORS.pink, COLORS.deepPink,
+                    COLORS.purple, '#ff3232', '#ff96c8'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (!isInsideHeart(this.x, this.y, bigHeartPoints)) {
+                    this.speedX *= -0.8;
+                    this.speedY *= -0.8;
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                }
+
+                this.life -= 1;
+                this.alpha = this.life / 180;
+                return this.life > 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.translate(this.x, this.y);
+
+                ctx.beginPath();
+                const points = [];
+                for (let angle = 0; angle < 360; angle += 5) {
+                    const t = angle * Math.PI / 180;
+                    const x = 16 * Math.sin(t) ** 3;
+                    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                    points.push({
+                        x: x * this.size / 16,
+                        y: -y * this.size / 16
+                    });
+                }
+
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let innerHearts = [];
+
+        // 动态字块类（飘动速度±0.5）
+        class WordBlock {
+            constructor(text, baseSize) {
+                this.text = text;
+                this.baseSize = baseSize;
+                this.color = this.getRandomColor();
+                this.resetPosition();
+
+                // 飘动速度保持在±0.5
+                this.speedX = Math.random() * 3 + 0.5;
+                this.speedY = Math.random() * 3 + 0.5;
+
+                this.pulse = Math.random() * Math.PI * 2;
+                this.pulseSpeed = Math.random() * 0.05 + 0.01;
+                this.fade = Math.random() * Math.PI * 2;
+                this.fadeSpeed = Math.random() * 0.03 + 0.01;
+            }
+
+            resetPosition() {
+                const angle = Math.random() * Math.PI * 2;
+                const t = angle;
+                let x = 16 * Math.sin(t) ** 3;
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+
+                this.x = x * (BIG_HEART_SCALE * 0.7) / 16 + canvas.width / 2;
+                this.y = -y * (BIG_HEART_SCALE * 0.7) / 16 + canvas.height / 2;
+            }
+
+            getRandomColor() {
+                const colors = [
+                    COLORS.red, COLORS.pink, COLORS.deepPink,
+                    COLORS.purple, '#ff3232', '#ff96c8'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.pulse += this.pulseSpeed;
+                const scale = 1 + Math.sin(this.pulse) * 0.4;
+                this.currentSize = this.baseSize * scale;
+
+                this.fade += this.fadeSpeed;
+                this.alpha = 0.7 + 0.3 * Math.sin(this.fade);
+
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (!isInsideHeart(this.x, this.y, bigHeartPoints)) {
+                    const bounceAngle = Math.random() * Math.PI * 0.5 + Math.PI * 0.25;
+                    const speed = Math.sqrt(this.speedX **2 + this.speedY** 2);
+
+                    this.speedX = speed * Math.cos(bounceAngle) * (this.x < canvas.width / 2 ? 1 : -1);
+                    this.speedY = speed * Math.sin(bounceAngle) * (this.y < canvas.height / 2 ? 1 : -1);
+
+                    this.x += this.speedX * 2;
+                    this.y += this.speedY * 2;
+                }
+
+                if (Math.random() < 0.03) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 0.5;
+                    this.speedX = Math.cos(angle) * speed;
+                    this.speedY = Math.sin(angle) * speed;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+
+                // 绘制阴影
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.font = `bold ${this.currentSize}px SimHei, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.text, this.x + 2, this.y + 2);
+
+                // 绘制文字
+                ctx.fillStyle = this.color;
+                ctx.fillText(this.text, this.x, this.y);
+
+                ctx.restore();
+            }
+        }
+
+        // 初始化文字块
+        let wordBlocks = [];
+        function initWordBlocks() {
+            wordBlocks = [
+                new WordBlock("ztt", Math.min(50, canvas.width / 12)),
+                new WordBlock("love", Math.min(60, canvas.width / 10)),
+                new WordBlock("ljx", Math.min(50, canvas.width / 12)),
+                new WordBlock("forever", Math.min(55, canvas.width / 11)),
+                new WordBlock("静静", Math.min(60, canvas.width / 10)),
+                new WordBlock("同同", Math.min(55, canvas.width / 12)),
+                new WordBlock("ztt", Math.min(40, canvas.width / 12)),
+                new WordBlock("love", Math.min(35, canvas.width / 10)),
+                new WordBlock("ljx", Math.min(25, canvas.width / 12)),
+                new WordBlock("forever", Math.min(40, canvas.width / 11)),
+                new WordBlock("静静", Math.min(50, canvas.width / 10)),
+                new WordBlock("同同", Math.min(35, canvas.width / 12)),
+                new WordBlock("一生一世", Math.min(35, canvas.width / 12))
+            ];
+        }
+        initWordBlocks();
+
+        // 纪念日文字
+        class AnniversaryText {
+            constructor(text, baseSize) {
+                this.text = text;
+                this.baseSize = baseSize;
+                this.size = Math.min(baseSize, window.innerHeight / 15);
+                this.color = COLORS.pink;
+                this.fade = 0;
+                this.fadeSpeed = 0.02;
+            }
+
+            update() {
+                this.fade += this.fadeSpeed;
+                this.alpha = 0.85 + 0.15 * Math.sin(this.fade);
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+
+                ctx.fillStyle = 'rgba(50, 0, 30, 0.6)';
+                ctx.font = `bold ${this.size}px SimHei, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const yPos = Math.max(50, canvas.height  / 2 - canvas.height  /  1.5 );
+                ctx.fillText(this.text, canvas.width / 2 + 3, yPos + 3);
+
+                ctx.fillStyle = this.color;
+                ctx.fillText(this.text, canvas.width / 2, yPos);
+
+                ctx.restore();
+            }
+        }
+
+        const annivText = new AnniversaryText("恋爱纪念20250914", 50);
+
+        // 烟花效果
+        class FireworkParticle {
+            constructor(x, y, color, sizeFactor = 1.0) {
+                this.x = x;
+                this.y = y;
+                this.color = [...color];
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 * sizeFactor + 1 * sizeFactor;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.gravity = 0.05 * sizeFactor;
+                this.life = Math.random() * 60 + 40;
+                this.maxLife = this.life;
+                this.flicker = Math.random() * Math.PI * 2;
+                this.baseSize = Math.random() * 2.5 + 1.5 * sizeFactor;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.vx *= 0.97;
+                this.vy *= 0.97;
+                this.life -= 1;
+                this.flicker += 0.1;
+                return this.life > 0;
+            }
+
+            draw() {
+                const alpha = (this.life / this.maxLife);
+                const brightness = 0.7 + 0.3 * Math.sin(this.flicker);
+                const r = Math.min(255, Math.floor(this.color[0] * brightness));
+                const g = Math.min(255, Math.floor(this.color[1] * brightness));
+                const b = Math.min(255, Math.floor(this.color[2] * brightness));
+                const size = Math.max(1, this.baseSize * (this.life / this.maxLife));
+
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (size > 1) {
+                    const trailX = this.x - this.vx * 2;
+                    const trailY = this.y - this.vy * 2;
+                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.3})`;
+                    ctx.lineWidth = Math.max(1, size - 1);
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(trailX, trailY);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * canvas.width * 0.8 + canvas.width * 0.1;
+                this.y = canvas.height + Math.random() * 50;
+                this.color = FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)];
+                this.sizeFactor = Math.random() * 1 + 0.6;
+                this.speed = Math.random() * 10 * this.sizeFactor + 4 * this.sizeFactor;
+                this.exploded = false;
+                this.particles = [];
+                const baseMin = canvas.height * 0.1;
+                const baseMax = canvas.height * 0.8;
+                const sizeBias = (this.sizeFactor - 0.6) / (1.6 - 0.6);
+                const biasRange = (baseMax - baseMin) * 0.4;
+                const minHeight = baseMin + sizeBias * biasRange;
+                const maxHeight = baseMax * 0.7 + sizeBias * baseMax * 0.3;
+                this.explodeHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+                this.trail = [];
+                this.trailLength = Math.random() * 14 + 8;
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.y -= this.speed;
+                    this.speed *= 0.95;
+                    this.trail.push({x: this.x, y: this.y});
+                    if (this.trail.length > this.trailLength) {
+                        this.trail.shift();
+                    }
+                    if (this.y <= this.explodeHeight || this.speed < 0.8) {
+                        this.explode();
+                        return true;
+                    }
+                    return true;
+                } else {
+                    this.particles = this.particles.filter(particle => particle.update());
+                    return this.particles.length > 0;
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                const particleCount = Math.random() * 125 * this.sizeFactor + 35 * this.sizeFactor;
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push(new FireworkParticle(
+                        this.x, this.y, this.color, this.sizeFactor
+                    ));
+                }
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.save();
+                    ctx.fillStyle = `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, Math.max(2, 3 * this.sizeFactor), 0, Math.PI * 2);
+                    ctx.fill();
+
+                    for (let i = 0; i < this.trail.length; i++) {
+                        const alpha = (i / this.trail.length) * 0.6;
+                        const size = Math.max(1, 3 * this.sizeFactor * (i / this.trail.length));
+                        const {x, y} = this.trail[i];
+
+                        ctx.globalAlpha = alpha;
+                        ctx.beginPath();
+                        ctx.arc(x, y, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                } else {
+                    this.particles.forEach(particle => particle.draw());
+                }
+            }
+        }
+
+        let fireworks = [];
+
+        // 本地音乐上传功能
+        localMusicInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type === 'audio/mp3') {
+                try {
+                    const localUrl = URL.createObjectURL(file);
+                    audio.src = localUrl;
+                    audio.load();
+                    audio.play().catch(() => {
+                        alert('请点击播放按钮开始播放本地音乐');
+                    });
+                    // 隐藏iframe播放器，显示正在播放本地音乐
+                    musicPlayerContainer.innerHTML = `
+                        <div class="text-white text-sm p-2">
+                            正在播放: ${file.name}
+                        </div>
+                    `;
+                } catch (err) {
+                    alert('加载本地音乐失败: ' + err.message);
+                }
+            } else {
+                alert('请选择MP3格式的音乐文件');
+            }
+        });
+
+        // 切换音乐播放器显示/隐藏
+        togglePlayerBtn.addEventListener('click', () => {
+            musicPlayerContainer.classList.toggle('hidden');
+        });
+
+        // 烟花按钮
+        fireworkBtn.addEventListener('click', () => {
+            const numFireworks = Math.floor(Math.random() * 7) + 2;
+            for (let i = 0; i < numFireworks; i++) {
+                fireworks.push(new Firework());
+            }
+        });
+
+        // 移动端烟花触摸事件
+        fireworkBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const numFireworks = Math.floor(Math.random() * 7) + 2;
+            for (let i = 0; i < numFireworks; i++) {
+                fireworks.push(new Firework());
+            }
+        });
+
+        // 初始化
+        try {
+            // 隐藏加载指示器
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 1000);
+        } catch (e) {
+            console.error('初始化时出错:', e);
+            loader.innerHTML = '<div class="text-red-500">加载出错: ' + e.message + '</div>';
+        }
+
+        // 动画循环
+        let frameCount = 0;
+        function animate() {
+            try {
+                frameCount++;
+
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 背景颜色
+                const r = Math.min(15, frameCount / 20);
+                const b = Math.min(25, frameCount / 15);
+                ctx.fillStyle = `rgb(${r}, 0, ${b})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 添加内部桃心粒子
+                if (frameCount % 10 === 0 && innerHearts.length < 80) {
+                    innerHearts.push(new InnerHeart());
+                }
+
+                // 绘制边框桃心
+                borderHearts.forEach(heart => {
+                    heart.update();
+                    heart.draw();
+                });
+
+                // 绘制内部桃心粒子
+                innerHearts = innerHearts.filter(heart => heart.update());
+                innerHearts.forEach(heart => heart.draw());
+
+                // 绘制文字块
+                wordBlocks.forEach(block => {
+                    block.update();
+                    block.draw();
+                });
+
+                // 绘制纪念日文字
+                annivText.update();
+                annivText.draw();
+
+                // 绘制烟花
+                fireworks = fireworks.filter(firework => firework.update());
+                fireworks.forEach(firework => firework.draw());
+
+                // 绘制大桃心填充
+                if (frameCount > 100) {
+                    ctx.save();
+                    const fillAlpha = 15 + 10 * Math.sin(frameCount * 0.05);
+                    ctx.globalAlpha = fillAlpha / 255;
+                    ctx.fillStyle = 'rgb(255, 100, 150)';
+
+                    ctx.beginPath();
+                    ctx.moveTo(bigHeartPoints[0].x, bigHeartPoints[0].y);
+                    for (let i = 1; i < bigHeartPoints.length; i++) {
+                        ctx.lineTo(bigHeartPoints[i].x, bigHeartPoints[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            } catch (e) {
+                console.error('动画循环出错:', e);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // 开始动画
+        animate();
+    </script>
+</body>
+</html>
+
+//
+第一版完成
+//
