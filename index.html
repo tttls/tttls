@@ -38,13 +38,41 @@
             .heart-beat {
                 animation: heartbeat 1.5s ease-in-out infinite;
             }
-            @keyframes heartbeat {
-                0% { transform: scale(1); }
-                14% { transform: scale(1.1); }
-                28% { transform: scale(1); }
-                42% { transform: scale(1.1); }
-                70% { transform: scale(1); }
+            .float {
+                animation: float 6s ease-in-out infinite;
             }
+            .photo-hover {
+                transition: all 0.3s ease;
+            }
+            .photo-hover:hover {
+                transform: scale(1.05) rotate(2deg);
+                z-index: 20;
+            }
+            .card-expand {
+                transition: max-height 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
+            }
+            .fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         #loveCanvas {
@@ -63,9 +91,15 @@
             z-index: 100;
         }
 
+        #daysCounter {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
         /* 音乐播放器容器样式 */
         #musicPlayerContainer {
             transition: all 0.3s ease;
+            max-width: 90vw; /* 限制最大宽度 */
         }
 
         #musicPlayerContainer:hover {
@@ -76,9 +110,81 @@
         #backgroundMusic {
             display: none;
         }
+
+        /* 照片墙样式 */
+        #photoWall {
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        #photoWall.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 爱情宣言卡片 */
+        #loveLetterCard {
+            cursor: pointer;
+        }
+
+        #letterContent {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        #loveLetterCard.expanded #letterContent {
+            max-height: 500px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 移动端音乐播放器加载提示 */
+        #musicLoading {
+            display: none;
+            color: white;
+            text-align: center;
+            padding: 10px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 640px) {
+            #musicPlayerContainer {
+                width: calc(100% - 20px);
+                bottom: 60px; /* 调整底部位置 */
+            }
+            
+            #musicPlayerContainer iframe {
+                width: 100% !important;
+                height: 300px !important; /* 减小高度 */
+            }
+            
+            /* 移动端备用播放器 */
+            #mobileAudioPlayer {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px;
+                color: white;
+            }
+        }
+
+        /* 桌面端隐藏备用播放器 */
+        @media (min-width: 641px) {
+            #mobileAudioPlayer {
+                display: none;
+            }
+        }
     </style>
 </head>
-<body class="bg-love-bg overflow-hidden m-0 p-0 h-screen">
+<body class="bg-love-bg m-0 p-0 h-screen overflow-x-hidden">
     <div id="loader" class="fixed inset-0 flex items-center justify-center bg-love-bg z-200">
         <div class="text-love-pink text-center">
             <i class="fa fa-heart heart-beat text-5xl mb-4"></i>
@@ -88,11 +194,84 @@
 
     <canvas id="loveCanvas"></canvas>
 
-    <!-- 网易云音乐iframe播放器 (居中显示在底部上方) -->
+    <!-- 顶部导航 -->
+    <nav class="fixed top-0 left-0 right-0 bg-love-button bg-opacity-70 backdrop-blur-sm z-95 flex justify-center py-2">
+        <div class="flex space-x-4 text-white text-sm md:text-base">
+            <a href="#heart" class="px-3 py-1 rounded hover:bg-love-pink hover:bg-opacity-30 transition-all">心形区域</a>
+            <a href="#photos" class="px-3 py-1 rounded hover:bg-love-pink hover:bg-opacity-30 transition-all">我们的回忆</a>
+            <a href="#letter" class="px-3 py-1 rounded hover:bg-love-pink hover:bg-opacity-30 transition-all">爱情宣言</a>
+        </div>
+    </nav>
+
+    <!-- 恋爱天数计数器 -->
+    <div id="daysCounter" class="fixed top-12 left-1/2 transform -translate-x-1/2 bg-love-button bg-opacity-60 text-white px-4 py-2 rounded-full z-90 text-center">
+        <p class="text-sm md:text-base"><span id="daysCount">0</span> 天的幸福时光</p>
+    </div>
+
+    <!-- 主心形区域 -->
+    <section id="heart" class="h-screen relative flex items-center justify-center">
+        <!-- 内容在这里由Canvas渲染 -->
+    </section>
+
+    <!-- 照片墙区域 -->
+    <section id="photos" class="py-16 px-4 relative">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-love-pink text-center text-3xl mb-10 font-bold heart-beat">我们的回忆</h2>
+            
+            <div id="photoWall" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <!-- 照片将通过JavaScript动态添加 -->
+            </div>
+            
+            <div class="text-center mt-8">
+                <button id="addPhotoBtn" class="bg-love-deepPink hover:bg-love-pink text-white px-6 py-2 rounded-full transition-all flex items-center mx-auto">
+                    <i class="fa fa-plus mr-2"></i> 添加照片
+                </button>
+                <input type="file" id="photoInput" accept="image/*" class="hidden" multiple>
+            </div>
+        </div>
+    </section>
+
+    <!-- 爱情宣言区域 -->
+    <section id="letter" class="py-16 px-4 relative">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-love-pink text-center text-3xl mb-10 font-bold heart-beat">爱情宣言</h2>
+            
+            <div id="loveLetterCard" class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 border-2 border-love-pink card-expand">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-love-lightPink text-xl font-bold">给我最爱的人</h3>
+                    <i id="letterToggle" class="fa fa-chevron-down text-love-pink transition-transform duration-300"></i>
+                </div>
+                
+                <div id="letterContent" class="card-expand text-white space-y-4">
+                    <p>亲爱的静静：</p>
+                    <p>从2025年9月14日那天起，我的世界因为有你而变得更加精彩。每一天和你在一起的时光，都是我生命中最珍贵的礼物。</p>
+                    <p>你的笑容像阳光一样温暖，你的拥抱像港湾一样安心。无论是欢声笑语还是默默相伴，有你的日子就是最好的日子。</p>
+                    <p>我爱你，不仅因为你是谁，也因为和你在一起时我是谁。愿我们的爱情如同这漫天星光，永远闪耀，直到永远。</p>
+                    <p class="text-right mt-6">永远爱你的同同</p>
+                    
+                    <div class="mt-6 pt-4 border-t border-love-pink border-opacity-30">
+                        <button id="editLetterBtn" class="bg-love-purple hover:bg-love-pink text-white px-4 py-2 rounded transition-all text-sm">
+                            <i class="fa fa-pencil mr-1"></i> 编辑我的宣言
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 底部留白 -->
+    <div class="h-32"></div>
+
+    <!-- 网易云音乐iframe播放器 -->
     <div id="musicPlayerContainer" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-90 bg-love-button bg-opacity-80 p-2 rounded-lg shadow-lg">
-        <!-- 网易云音乐外链播放器 (可替换为自己的歌曲) -->
-        <!-- 如何获取: 网易云音乐网页版 → 歌曲页 → 分享 → 生成外链播放器 → 复制iframe代码 -->
+        <!-- 加载提示 -->
+        <div id="musicLoading">
+            <i class="fa fa-spinner fa-spin"></i> 加载音乐播放器中...
+        </div>
+        
+        <!-- 网易云音乐iframe -->
         <iframe
+            id="musicIframe"
             frameborder="no"
             border="0"
             marginwidth="0"
@@ -101,18 +280,31 @@
             height="450"
             src="//music.163.com/outchain/player?type=0&id=14319654515&auto=1&height=430"
             title="网易云音乐播放器"
+            onload="hideMusicLoading()"
+            onerror="showMusicError()"
         >
         </iframe>
+        
+        <!-- 移动端备用音频播放器 -->
+        <div id="mobileAudioPlayer" class="hidden">
+            <audio controls id="mobileAudio" class="w-full">
+                <source src="https://music.163.com/song/media/outer/url?id=14319654515.mp3" type="audio/mpeg">
+                您的浏览器不支持音频播放
+            </audio>
+        </div>
     </div>
 
-    <!-- 音乐控制器 (保留快捷操作按钮) -->
+    <!-- 音乐控制器 -->
     <div id="musicController" class="bg-opacity-50 bg-love-button text-white p-3 flex items-center justify-between">
         <button id="togglePlayerBtn" class="w-10 h-10 rounded-full bg-love-deepPink flex items-center justify-center">
             <i class="fa fa-music"></i>
         </button>
 
-        <div class="flex-grow mx-3 text-center text-sm">
-            <span>点击左侧←音乐播放器可关闭歌单||静静老婆爱你爱你||点击右侧→[烟花]可发射爱的烟花</span>
+        <div class="flex-grow mx-3 text-center text-sm hidden md:block">
+            <span>点击左侧音乐按钮可关闭歌单 || 静静老婆爱你爱你 || 点击右侧烟花可发射爱的烟花</span>
+        </div>
+        <div class="flex-grow mx-3 text-center text-xs md:hidden">
+            <span>音乐 | 爱你 | 烟花</span>
         </div>
 
         <div class="flex items-center">
@@ -132,11 +324,55 @@
     </audio>
 
     <script>
+        // 音乐播放器加载状态管理
+        function hideMusicLoading() {
+            document.getElementById('musicLoading').style.display = 'none';
+            document.getElementById('musicIframe').style.display = 'block';
+        }
+        
+        function showMusicError() {
+            // 如果iframe加载失败，在移动端显示备用播放器
+            if (window.innerWidth <= 640) {
+                document.getElementById('musicLoading').style.display = 'none';
+                document.getElementById('musicIframe').style.display = 'none';
+                document.getElementById('mobileAudioPlayer').style.display = 'block';
+            } else {
+                document.getElementById('musicLoading').innerHTML = 
+                    '<div class="text-red-300">播放器加载失败，请尝试刷新页面</div>';
+            }
+        }
+        
+        // 页面加载时检查是否为移动端，如果是则使用不同的加载策略
+        window.addEventListener('load', function() {
+            if (window.innerWidth <= 640) {
+                // 移动端延迟加载iframe，提高优先级
+                setTimeout(function() {
+                    const iframe = document.getElementById('musicIframe');
+                    iframe.src = iframe.src; // 触发重新加载
+                }, 1000);
+            }
+        });
+
         // 基本错误处理
         window.addEventListener('error', (e) => {
             console.error('发生错误:', e.error);
             alert('页面加载出错: ' + e.error.message);
         });
+
+        // 恋爱纪念日 - 2025年9月14日
+        const LOVE_START_DATE = new Date(2025, 8, 14); // 月份从0开始计数
+        
+        // 计算恋爱天数
+        function calculateLoveDays() {
+            const today = new Date();
+            const timeDiff = today - LOVE_START_DATE;
+            const dayDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+            document.getElementById('daysCount').textContent = dayDiff;
+        }
+        
+        // 初始化计算并每分钟更新一次
+        calculateLoveDays();
+        setInterval(calculateLoveDays, 60000);
 
         // 获取画布和上下文
         const canvas = document.getElementById('loveCanvas');
@@ -153,6 +389,12 @@
         const togglePlayerBtn = document.getElementById('togglePlayerBtn');
         const musicPlayerContainer = document.getElementById('musicPlayerContainer');
         const localMusicInput = document.getElementById('localMusic');
+        const photoWall = document.getElementById('photoWall');
+        const addPhotoBtn = document.getElementById('addPhotoBtn');
+        const photoInput = document.getElementById('photoInput');
+        const loveLetterCard = document.getElementById('loveLetterCard');
+        const letterToggle = document.getElementById('letterToggle');
+        const editLetterBtn = document.getElementById('editLetterBtn');
 
         // 响应式画布尺寸
         function resizeCanvas() {
@@ -365,7 +607,7 @@
 
         let innerHearts = [];
 
-        // 动态字块类（飘动速度±0.5）
+        // 动态字块类
         class WordBlock {
             constructor(text, baseSize) {
                 this.text = text;
@@ -373,9 +615,9 @@
                 this.color = this.getRandomColor();
                 this.resetPosition();
 
-                // 飘动速度保持在±0.5
-                this.speedX = Math.random() * 3 + 0.5;
-                this.speedY = Math.random() * 3 + 0.5;
+                // 飘动速度
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
 
                 this.pulse = Math.random() * Math.PI * 2;
                 this.pulseSpeed = Math.random() * 0.05 + 0.01;
@@ -496,7 +738,7 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                const yPos = Math.max(50, canvas.height  / 2 - canvas.height  /  1.5 );
+                const yPos = Math.max(50, canvas.height  / 2 - canvas.height  /  2 );
                 ctx.fillText(this.text, canvas.width / 2 + 3, yPos + 3);
 
                 ctx.fillStyle = this.color;
@@ -642,6 +884,103 @@
 
         let fireworks = [];
 
+        // 照片墙功能
+        function addPhotosToWall(photos) {
+            photos.forEach(photo => {
+                const photoContainer = document.createElement('div');
+                photoContainer.className = 'relative overflow-hidden rounded-lg shadow-lg photo-hover float';
+                photoContainer.style.animationDelay = `${Math.random() * 3}s`;
+                
+                const img = document.createElement('img');
+                img.src = photo;
+                img.alt = '我们的回忆';
+                img.className = 'w-full h-full object-cover';
+                
+                photoContainer.appendChild(img);
+                photoWall.appendChild(photoContainer);
+            });
+            
+            // 显示照片墙
+            photoWall.classList.add('visible');
+        }
+        
+        // 初始化示例照片
+        function initSamplePhotos() {
+            // 使用示例图片作为占位符
+            const samplePhotos = [
+                'https://picsum.photos/id/237/300/300',
+                'https://picsum.photos/id/238/300/300',
+                'https://picsum.photos/id/239/300/300',
+                'https://picsum.photos/id/240/300/300',
+                'https://picsum.photos/id/241/300/300',
+                'https://picsum.photos/id/242/300/300'
+            ];
+            
+            addPhotosToWall(samplePhotos);
+        }
+        
+        // 添加照片按钮事件
+        addPhotoBtn.addEventListener('click', () => {
+            photoInput.click();
+        });
+        
+        // 处理照片上传
+        photoInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const photos = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            photos.push(event.target.result);
+                            if (photos.length === files.length) {
+                                addPhotosToWall(photos);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            }
+        });
+
+        // 爱情宣言卡片展开/折叠
+        loveLetterCard.addEventListener('click', () => {
+            loveLetterCard.classList.toggle('expanded');
+            if (loveLetterCard.classList.contains('expanded')) {
+                letterToggle.style.transform = 'rotate(180deg)';
+            } else {
+                letterToggle.style.transform = 'rotate(0)';
+            }
+        });
+        
+        // 编辑爱情宣言
+        editLetterBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // 防止触发卡片折叠
+            const newContent = prompt('编辑你的爱情宣言:', 
+                '亲爱的静静：\n\n从2025年9月14日那天起，我的世界因为有你而变得更加精彩...');
+            
+            if (newContent !== null && newContent.trim() !== '') {
+                // 简单处理换行
+                const formattedContent = newContent.replace(/\n/g, '<br>');
+                document.getElementById('letterContent').innerHTML = `
+                    <p>${formattedContent}</p>
+                    <p class="text-right mt-6">永远爱你的同同</p>
+                    <div class="mt-6 pt-4 border-t border-love-pink border-opacity-30">
+                        <button id="editLetterBtn" class="bg-love-purple hover:bg-love-pink text-white px-4 py-2 rounded transition-all text-sm">
+                            <i class="fa fa-pencil mr-1"></i> 编辑我的宣言
+                        </button>
+                    </div>
+                `;
+                // 重新绑定事件
+                document.getElementById('editLetterBtn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // 这里可以再次调用编辑功能
+                });
+            }
+        });
+
         // 本地音乐上传功能
         localMusicInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -689,8 +1028,26 @@
             }
         });
 
+        // 滚动显示动画
+        function handleScrollAnimations() {
+            const sections = document.querySelectorAll('section');
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                const isVisible = rect.top < window.innerHeight * 0.75 && rect.bottom > 0;
+                
+                if (isVisible && section.id === 'photoWall') {
+                    section.classList.add('visible');
+                }
+            });
+        }
+        
+        window.addEventListener('scroll', handleScrollAnimations);
+
         // 初始化
         try {
+            // 初始化照片墙
+            initSamplePhotos();
+            
             // 隐藏加载指示器
             setTimeout(() => {
                 loader.style.opacity = '0';
@@ -775,8 +1132,3 @@
     </script>
 </body>
 </html>
-
-//
-第一版完成
-//
-
